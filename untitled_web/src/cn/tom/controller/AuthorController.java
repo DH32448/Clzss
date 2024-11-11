@@ -1,8 +1,9 @@
 package cn.tom.controller;
 
+import cn.tom.anno.MyConter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+@MyConter
 public class AuthorController {
     public void add(HttpServletRequest request, HttpServletResponse response) {
         try {
