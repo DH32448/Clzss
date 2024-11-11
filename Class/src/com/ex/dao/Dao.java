@@ -65,7 +65,7 @@ public class Dao {
             throw new RuntimeException("SQL 执行失败", e);
         }
     }
-    public static Map<String, Object> findOne(Class<?> clazz, String sql) {
+    public static Map<String, Object> findOne(Class clazz, String sql) {
         Map<String, Object> result = new HashMap<>();
 
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -95,34 +95,34 @@ public class Dao {
     }
 
 
-    public static Object findOne2(Class c, String sql) {
+    public static Object findOne2(Class clazz, String str) {
+        Object obj = null;
+        String sql = "SELECT * FROM " + clazz.getSimpleName() + " WHERE " + str;
+
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
-                ResultSetMetaData metaData = resultSet.getMetaData();
-                int columnCount = metaData.getColumnCount();
-                Map<String, Object> result = new HashMap<>();
-
-                for (int i = 1; i <= columnCount; i++) {
-                    String columnName = metaData.getColumnName(i);
-                    Object columnValue = resultSet.getObject(i);
-                    result.put(columnName, columnValue);
+                obj = clazz.newInstance();
+                Field[] fields = clazz.getDeclaredFields();
+                for (Field field : fields) {
+                    field.setAccessible(true); // 允许直接访问私有的成员变量
+                    String columnName = field.getName();
+                    Object columnValue = resultSet.getObject(columnName);
+                    field.set(obj, columnValue);
                 }
-
-                Object obj = c.getDeclaredConstructor().newInstance();
-                for (Field field : c.getDeclaredFields()) {
-                    field.setAccessible(true);
-                    if (result.containsKey(field.getName())) {
-                        field.set(obj, result.get(field.getName()));
-                    }
-                }
-
-                return obj;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            try {
+                if (connection != null) {
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
-        return null;
+        return obj;
     }
 
     public static Map<String, Object> copyObj2Map(Object obj) {
@@ -139,7 +139,7 @@ public class Dao {
                 Object fieldValue = field.get(obj);
                 map.put(fieldName, fieldValue);
             }
-        } catch (IllegalAccessException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return map;
@@ -150,7 +150,7 @@ public class Dao {
             return null;
         }
         try {
-            Object obj = clazz.getDeclaredConstructor().newInstance();
+            Object obj = clazz.newInstance();
             Field[] fields = clazz.getDeclaredFields();
 
             for (Field field : fields) {
